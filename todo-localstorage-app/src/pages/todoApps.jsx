@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { FaTrash, FaEdit } from "react-icons/fa";
 
 export default function TodoApp() {
@@ -9,60 +8,50 @@ export default function TodoApp() {
   const [editId, setEditId] = useState(null);
 
   useEffect(() => {
-    fetchTodos();
+    const savedTodos = JSON.parse(localStorage.getItem("todos")) || [];
+    setTodos(savedTodos);
   }, []);
 
-  const fetchTodos = async () => {
-    try {
-      const res = await axios.get(`${import.meta.env.VITE_REACT_API}/todos`);
-      setTodos(res.data);
-    } catch (error) {
-      console.error("Failed to fetch todos:", error);
-    }
+  const saveToLocalStorage = (items) => {
+    localStorage.setItem("todos", JSON.stringify(items));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!task.trim()) return;
 
-    try {
-      if (isEditing) {
-        await axios.put(`${import.meta.env.VITE_REACT_API}/todos/${editId}`, {
-          text: task,
-        });
-        setIsEditing(false);
-        setEditId(null);
-      } else {
-        await axios.post(`${import.meta.env.VITE_REACT_API}/todos`, {
-          text: task,
-        });
-      }
-      setTask("");
-      fetchTodos();
-    } catch (error) {
-      console.error("Failed to submit todo:", error);
+    let updatedTodos;
+
+    if (isEditing) {
+      updatedTodos = todos.map((todo) =>
+        todo.id === editId ? { ...todo, text: task } : todo
+      );
+      setIsEditing(false);
+      setEditId(null);
+    } else {
+      updatedTodos = [
+        ...todos,
+        { id: Date.now(), text: task, completed: false },
+      ];
     }
+
+    setTodos(updatedTodos);
+    saveToLocalStorage(updatedTodos);
+    setTask("");
   };
 
-  const toggleComplete = async (id) => {
-    try {
-      const todo = todos.find((t) => t.id === id);
-      await axios.put(`${import.meta.env.VITE_REACT_API}/todos/${id}`, {
-        completed: !todo.completed,
-      });
-      fetchTodos();
-    } catch (error) {
-      console.error("Failed to toggle complete:", error);
-    }
+  const toggleComplete = (id) => {
+    const updatedTodos = todos.map((todo) =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    );
+    setTodos(updatedTodos);
+    saveToLocalStorage(updatedTodos);
   };
 
-  const deleteTodo = async (id) => {
-    try {
-      await axios.delete(`${import.meta.env.VITE_REACT_API}/todos/${id}`);
-      fetchTodos();
-    } catch (error) {
-      console.error("Failed to delete todo:", error);
-    }
+  const deleteTodo = (id) => {
+    const updatedTodos = todos.filter((todo) => todo.id !== id);
+    setTodos(updatedTodos);
+    saveToLocalStorage(updatedTodos);
   };
 
   const editTodo = (id) => {
@@ -78,7 +67,6 @@ export default function TodoApp() {
         To-Do List
       </h1>
 
-      {/* Form Input */}
       <form
         onSubmit={handleSubmit}
         className="flex flex-col sm:flex-row gap-2 mb-6 w-full max-w-md"
@@ -99,7 +87,6 @@ export default function TodoApp() {
         </button>
       </form>
 
-      {/* Daftar To-Do */}
       <ul className="w-full max-w-md">
         {todos.map((todo) => (
           <li
@@ -108,7 +95,6 @@ export default function TodoApp() {
             bg-white p-3 rounded shadow mb-2 gap-2
             hover:bg-gray-100 hover:shadow-md transition-all duration-200 cursor-pointer"
           >
-            {/* Kiri: Checkbox & Teks */}
             <div className="flex items-start sm:items-center gap-2 w-full">
               <input
                 type="checkbox"
@@ -124,8 +110,6 @@ export default function TodoApp() {
                 {todo.text}
               </span>
             </div>
-
-            {/* Kanan: Tombol edit & hapus */}
             <div className="flex gap-3 self-end sm:self-auto text-lg">
               <button
                 onClick={() => editTodo(todo.id)}
